@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+#set -o errexit
+function msg {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+}
+
+# Only run post-checkout hook if switched to a branch (flag 1) and HEAD changed
+[[ $3 != 1 ]] && exit 0
+[[ "$1" == "$2" ]] && exit 0
+
+readonly ENV_FILE=".env.git-hooks.local"
+test -e $ENV_FILE && source $ENV_FILE || msg "$0: warn: no '$ENV_FILE' file in $(pwd): default values will be used"
+
+readonly APP_NAME="${APP_NAME:-rails-app}"
+readonly APP_DIR="${APP_DIR:-./${APP_NAME}}"
+readonly CONTAINERS="${CONTAINERS:-${APP_NAME}}"
+readonly COMPOSE_FILE="${COMPOSE_FILE:-${APP_DIR}/compose.yml}"
+
+readonly TMPDIR="/tmp/$APP_NAME/git-post-checkout"
+test -d $TMPDIR || mkdir -p $TMPDIR
+readonly LOGFILE=$(mktemp -q ${TMPDIR}/`date '+%Y%m%d-%H%M%S'`.XXX.log)
+
+#exec 1>$LOGFILE
+#exec 2>&1
+exec > >(tee -a $LOGFILE) 2>&1
+
+msg "Starting git post-checkout hook for $APP_NAME"
+msg "Execution log saved to $LOGFILE"
+
+# Teardown and rebuild app containers
+msg "Rebuilding and starting containers: $CONTAINERS"
+msg "Using docker compose file: $COMPOSE_FILE"
+# Remove existing server PID file
+rm -f ${APP_DIR}/tmp/pids/server.pid
+#docker compose -f "$COMPOSE_FILE" config 1>>$LOGFILE 2>&1
+docker compose -f "$COMPOSE_FILE" up --remove-orphans -d --build $CONTAINERS 1>>$LOGFILE 2>&1
+exit_code=$?
+if [ $exit_code -ne 0 ]; then
+    msg "Error: docker compose failed with exit code $exit_code"
+else
+    msg "Docker compose completed successfully"
+    msg "Git post-checkout hook completed successfully"
+fi
+exit $exit_code
