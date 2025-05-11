@@ -57,3 +57,4 @@ This hook behaves similar to the post checkout hook, but it runs after a merge o
 * [Git Commit Message Guidelines](https://cbea.ms/git-commit/)
 * [Keep Your Commits "Atomic"](https://www.freshconsulting.com/insights/blog/atomic-commits/)
 * [Semantic Versioning](https://semver.org/)
+* [GIST: How to rebuild your web app container...](https://gist.github.com/mtilson/28e84706dc41d90c428a3d684f919cce)
